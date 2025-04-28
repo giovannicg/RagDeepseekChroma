@@ -15,14 +15,23 @@ vectordb = Chroma(
     embedding_function=embedding_model
 )
 
-def add_document(name: str, chunks: list[str], tags: list[str]):
-    docs = [Document(page_content=chunk, metadata={"document_name": name, "tags": tags}) for chunk in chunks]
-    vectordb.add_documents(docs)
+def add_document(name: str, facts: list[str]):
+    documents = [
+        Document(page_content=fact, metadata={"document_name": name})
+        for fact in facts
+    ]
+    vectordb.add_documents(documents)
     vectordb.persist()
+    print(f"📄 Documento '{name}' agregado con {len(facts)} facts.")
 
-def search(question: str, k: int = 5, tag_filter: str = None):
-    filter_dict = {"tags": tag_filter} if tag_filter else None
-    return vectordb.similarity_search(question, k=k, filter=filter_dict)
+
+def search(question: str, k: int = 5):
+    """
+    Realiza búsqueda semántica en todos los documentos almacenados.
+    No usa tags, solo texto.
+    """
+    results = vectordb.similarity_search(question, k=k)
+    return results
 
 def reset_db():
     if os.path.exists(CHROMA_PATH):
