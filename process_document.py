@@ -42,8 +42,13 @@ def process_pdf_and_add_to_chroma(file_path: str):
     all_facts = []
     for i, chunk in enumerate(chunks):
         facts = get_facts_from_chunk(chunk)
-        all_facts.extend(facts)
+        if facts:
+            all_facts.extend(facts)
         print(f"Chunk {i+1}/{len(chunks)} procesado. {len(facts)} hechos extraídos.")
+
+    if not all_facts:
+        print(f"⚠️ No se extrajeron facts del documento '{file_path}'. No se guardará nada en Chroma.")
+        return  # No continuar si no hay hechos
 
     documents = [
         Document(
@@ -54,6 +59,10 @@ def process_pdf_and_add_to_chroma(file_path: str):
         )
         for fact in all_facts
     ]
+    with open("debug_chunks.txt", "w", encoding="utf-8") as f:
+        for i, chunk in enumerate(chunks):
+            f.write(f"--- Chunk {i+1} ---\n")
+            f.write(chunk + "\n\n")
 
     vectordb.add_documents(documents)
     vectordb.persist()
