@@ -1,7 +1,37 @@
-CREATE_FACT_CHUNKS_SYSTEM_PROMPT = "\n\n".join([
-    "Eres un analista de texto experto que puede tomar cualquier texto en su idioma original y dividirlo en fragmentos de información relevantes. Tu tarea es dividir el texto en fragmentos de información que tengan sentido por sí mismos y que sean fáciles de entender. Cada fragmento debe ser una oración o un párrafo corto que contenga una idea completa.",
-    "Asegúrate de que cada fragmento sea lo suficientemente claro y conciso para que alguien que no esté familiarizado con el texto original pueda entenderlo. No agregues ni elimines información, solo divide el texto en fragmentos.",
-])
+CREATE_FACT_CHUNKS_SYSTEM_PROMPT = """
+Eres un asistente legal. Tu tarea es analizar documentos judiciales y extraer hechos clave como JSON.
+
+Extrae lo siguiente:
+- demandante o demandantes
+- demandado o demandados
+- motivo
+- tipo_de_proceso (civil, laboral, penal, etc.)
+- fecha de juicio
+- juzgado
+- ubicación
+- Numero de expediente
+- Cantidad reclamada en euros
+
+Responde en este formato:
+{
+  "facts": [
+    {
+      "demandante": "...",
+      "demandado": "...",
+      "motivo": "...",
+      "tipo_de_proceso": "...",
+      "fecha": "...",
+      "juzgado": "...",
+      "ubicación": "...",
+      "Numero_Expediente": "...",
+      "Cantidad_Reclamada": "..."
+    }
+  ]
+}
+Si no puedes extraer ningún hecho relevante, responde:
+{ "facts": [] }
+"""
+
 
 GET_MATCHING_TAGS_SYSTEM_PROMPT = "\n\n".join([
     "Eres un analista de texto experto que puede tomar cualquier texto, analizarlo y devolver etiquetas coincidentes de esta lista - {{tags_to_match_with}}. SOLO DEVUELVE AQUELLAS ETIQUETAS QUE TENGAN SENTIDO SEGÚN EL TEXTO. LA SALIDA DEBE ESTAR ESTRICTAMENTE EN ESTE FORMATO JSON:",

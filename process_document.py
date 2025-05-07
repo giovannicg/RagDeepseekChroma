@@ -12,27 +12,43 @@ CHROMA_PATH = "chroma_db"
 CHUNK_SIZE = 4000
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 vectordb = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_model)
-llm = OllamaLLM(model="deepseek-r1:1.5b")  # Puedes cambiar a "mistral", "gemma", etc.
+llm = OllamaLLM(model="llama3")  # Puedes cambiar a "mistral", "gemma", etc.
 
 def split_text(text: str, size: int) -> List[str]:
     return [text[i:i + size] for i in range(0, len(text), size)]
 
 def get_facts_from_chunk(chunk: str) -> list[str]:
-    prompt = CREATE_FACT_CHUNKS_SYSTEM_PROMPT + f"\n\nTexto:\n{chunk}"
-    response = llm.invoke(prompt)
+    # Prompt principal de extracción
+    extraction_prompt = CREATE_FACT_CHUNKS_SYSTEM_PROMPT + f"\n\nTexto:\n{chunk}"
+    response = llm.invoke(extraction_prompt)
 
     if not response:
         print("[WARN] Ollama devolvió una respuesta vacía.")
         return []
 
     try:
-        facts = json.loads(response)["facts"]
-        return facts
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] No se pudo decodificar JSON: {e}")
-        print(f"Respuesta recibida: {response}")
-        return []
+        data = json.loads(response)
+        facts = data.get("facts", [])
+        if facts:
+            return facts
+        else:
+            raise ValueError("Sin facts")
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"[INFO] No se extrajeron hechos estructurados: {e}")
+        # Prompt alternativo: resumen claro del fragmento
+        resumen_prompt = f"""
+            Resume el siguiente texto legal en lenguaje claro. Máximo 3 frases. Destaca quién participa, el motivo y la fecha si aparece.
 
+            Texto:
+            \"\"\"
+            {chunk}
+            \"\"\"
+            """
+        resumen = llm.invoke(resumen_prompt).strip()
+        if resumen:
+            return [resumen]
+        else:
+            return []
 
 def process_pdf_and_add_to_chroma(file_path: str):
     doc = fitz.open(file_path)
@@ -52,10 +68,8 @@ def process_pdf_and_add_to_chroma(file_path: str):
 
     documents = [
         Document(
-            page_content=fact,
-            metadata={
-                "document_name": os.path.basename(file_path)
-            }
+            page_content=json.dumps(fact, ensure_ascii=False, indent=2),  # Convertimos dict → str
+            metadata={"document_name": os.path.basename(file_path)}
         )
         for fact in all_facts
     ]
@@ -65,5 +79,5 @@ def process_pdf_and_add_to_chroma(file_path: str):
             f.write(chunk + "\n\n")
 
     vectordb.add_documents(documents)
-    vectordb.persist()
+    #vectordb.persist()
     print(f"📄 Documento '{file_path}' indexado con {len(documents)} hechos.")

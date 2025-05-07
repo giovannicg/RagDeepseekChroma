@@ -7,7 +7,7 @@ from api.constants import RESPOND_TO_MESSAGE_SYSTEM_PROMPT
 import os
 
 router = APIRouter()
-llm = OllamaLLM(model="deepseek-r1:1.5b")
+llm = OllamaLLM(model="llama3")
 
 @router.post("/upload/")
 async def upload_pdf(file: UploadFile = File(...)):
