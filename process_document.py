@@ -7,6 +7,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from typing import List
 from api.constants import CREATE_FACT_CHUNKS_SYSTEM_PROMPT, GET_MATCHING_TAGS_SYSTEM_PROMPT
 import os
+import re
 # Configuración
 CHROMA_PATH = "chroma_db"
 CHUNK_SIZE = 4000
@@ -37,7 +38,7 @@ def get_facts_from_chunk(chunk: str) -> list[str]:
         print(f"[INFO] No se extrajeron hechos estructurados: {e}")
         # Prompt alternativo: resumen claro del fragmento
         resumen_prompt = f"""
-            Resume el siguiente texto legal en lenguaje claro. Máximo 3 frases. Destaca quién participa, el motivo y la fecha si aparece.
+            Resume el siguiente texto legal en lenguaje claro. 
 
             Texto:
             \"\"\"
@@ -50,9 +51,22 @@ def get_facts_from_chunk(chunk: str) -> list[str]:
         else:
             return []
 
-def process_pdf_and_add_to_chroma(file_path: str):
+def process_pdf_and_add_to_chroma(file_path: str, tipo_documento: str):
     doc = fitz.open(file_path)
     full_text = "\n\n".join([page.get_text() for page in doc])
+    patterns = [
+        r'Expediente[^\n\r]*?([A-Za-z0-9-]+/\d{4})',
+        r'Procedimiento[^\n\r]*?([A-Za-z0-9-]+/\d{4})'
+    ]
+    numero_procedimiento = ""
+    for pat in patterns:
+        m = re.search(pat, full_text, re.IGNORECASE)
+        if m:
+            numero_procedimiento = m.group(1)
+            break
+    if not numero_procedimiento:
+        print(f"[WARN] No se encontró el número de procedimiento en '{file_path}'.")
+
     chunks = split_text(full_text, CHUNK_SIZE)
 
     all_facts = []
@@ -69,7 +83,11 @@ def process_pdf_and_add_to_chroma(file_path: str):
     documents = [
         Document(
             page_content=json.dumps(fact, ensure_ascii=False, indent=2),  # Convertimos dict → str
-            metadata={"document_name": os.path.basename(file_path)}
+            metadata={
+                "numero_procedimiento": numero_procedimiento,
+                "nombre_documento": os.path.basename(file_path),
+                "tipo_documento": tipo_documento
+            }
         )
         for fact in all_facts
     ]
