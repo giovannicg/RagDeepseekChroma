@@ -1,13 +1,14 @@
-from fastapi import APIRouter, UploadFile, File, Form, Query
-from process_document import process_pdf_and_add_to_chroma
-from vectore_store import search
-from langchain_ollama import OllamaLLM
-from api.constants import RESPOND_TO_MESSAGE_SYSTEM_PROMPT
+from fastapi import APIRouter, UploadFile, File, Form
+from services.upload_service import handle_pdf_upload
+from services.chat_service import handle_chat
+from services.extract_service import extract_info_from_text
+from models.chat_history import ChatHistory
+from pydantic import BaseModel
+from typing import Optional
 
 import os
 
 router = APIRouter()
-llm = OllamaLLM(model="llama3")
 
 @router.post("/upload/")
 async def upload_pdf(
@@ -19,7 +20,7 @@ async def upload_pdf(
     with open(file_path, "wb") as f:
         f.write(await file.read())
 
-    process_pdf_and_add_to_chroma(file_path, tipo_documento)
+    handle_pdf_upload(file_path, tipo_documento)
 
     return {"message": f"{file.filename} procesado exitosamente."}
 
@@ -29,22 +30,50 @@ async def chat_with_documents(
     numero_procedimiento: str = Form(None),
     nombre_documento: str = Form(None)
 ):
-    # Construir filtros de metadata según parámetros opcionales
-    filters = {}
+    return handle_chat(question, numero_procedimiento, nombre_documento)
+
+@router.post("/extract_info/")
+async def extract_info(
+    text: str = Form(...)
+):
+    return extract_info_from_text(text)
+
+@router.get("/chat_history/")
+def get_chat_history(
+    numero_procedimiento: str = None,
+    nombre_documento: str = None
+):
+    query = ChatHistory.select()
     if numero_procedimiento:
-        filters["numero_procedimiento"] = numero_procedimiento
+        query = query.where(ChatHistory.numero_procedimiento == numero_procedimiento)
     if nombre_documento:
-        filters["nombre_documento"] = nombre_documento
+        query = query.where(ChatHistory.nombre_documento == nombre_documento)
+    
+    return [
+        {
+            "pregunta": chat.pregunta,
+            "respuesta": chat.respuesta,
+            "fecha": chat.timestamp.isoformat()
+        }
+        for chat in query.order_by(ChatHistory.timestamp.desc())
+    ]
 
-    # Pasar filtros a la búsqueda si existen
-    results = search(question, k=5, filters=filters or None)
-    context = "\n".join([f"{i+1}. {doc.page_content}" for i, doc in enumerate(results)])
-    prompt = RESPOND_TO_MESSAGE_SYSTEM_PROMPT.replace("{{knowledge}}", context)
-    full_prompt = f"{prompt}\n\nPregunta: {question}\nAsistente:"
+class ChatTransferResponse(BaseModel):
+    pregunta: str
+    respuesta: str
+    numero_procedimiento: Optional[str] = None
+    nombre_documento: Optional[str] = None
 
-    response = llm.invoke(full_prompt)
+@router.post("/chat_export/", response_model=ChatTransferResponse)
+async def chat_export(
+    pregunta: str = Form(...),
+    respuesta: str = Form(...),
+    numero_procedimiento: Optional[str] = Form(None),
+    nombre_documento: Optional[str] = Form(None)
+):
     return {
-        "question": question,
-        "answer": response,
-        "references": [doc.metadata for doc in results]
+        "pregunta": pregunta,
+        "respuesta": respuesta,
+        "numero_procedimiento": numero_procedimiento,
+        "nombre_documento": nombre_documento
     }

@@ -1,35 +1,6 @@
 CREATE_FACT_CHUNKS_SYSTEM_PROMPT = """
-Eres un asistente legal. Tu tarea es analizar documentos judiciales y extraer hechos clave como JSON.
+Eres un asistente legal. Tu tarea es analizar documentos judiciales y extraer hechos.
 
-Extrae lo siguiente:
-- demandante o demandantes
-- demandado o demandados
-- motivo
-- tipo_de_proceso (civil, laboral, penal, etc.)
-- fecha de juicio
-- juzgado
-- ubicación
-- Numero de expediente
-- Cantidad reclamada en euros
-
-Responde en este formato:
-{
-  "facts": [
-    {
-      "demandante": "...",
-      "demandado": "...",
-      "motivo": "...",
-      "tipo_de_proceso": "...",
-      "fecha": "...",
-      "juzgado": "...",
-      "ubicación": "...",
-      "Numero_Expediente": "...",
-      "Cantidad_Reclamada": "..."
-    }
-  ]
-}
-Si no puedes extraer ningún hecho relevante, responde:
-{ "facts": [] }
 """
 
 
