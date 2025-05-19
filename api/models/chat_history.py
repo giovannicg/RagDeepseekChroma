@@ -15,7 +15,7 @@ class ChatHistory(BaseModel):
     nombre_documento = CharField(null=True)
     pregunta = TextField()
     respuesta = TextField()
-    timestamp = DateTimeField(default=datetime.utcnow)
+    timestamp = DateTimeField(default=datetime.now)
 
 db.connect()
 db.create_tables([ChatHistory])

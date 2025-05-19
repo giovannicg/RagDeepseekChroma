@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form
-from services.upload_service import handle_pdf_upload
-from services.chat_service import handle_chat
-from services.extract_service import extract_info_from_text
+from api.services.upload_service import handle_pdf_upload
+from api.services.chat_service import handle_chat
+from api.services.extract_service import extract_info_from_text
 from models.chat_history import ChatHistory
 from pydantic import BaseModel
 from typing import Optional

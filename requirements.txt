@@ -9,3 +9,5 @@ sentence-transformers
 langchain_ollama
 fastapi
 uvicorn
+peewee
+sentence-transformers
