@@ -2,9 +2,8 @@ from fastapi import APIRouter, UploadFile, File, Form
 from api.services.upload_service import handle_pdf_upload
 from api.services.chat_service import handle_chat
 from api.services.extract_service import extract_info_from_text
-from models.chat_history import ChatHistory
-from pydantic import BaseModel
-from typing import Optional
+from api.models.chat_history import ChatHistory
+
 
 import os
 
@@ -30,7 +29,31 @@ async def chat_with_documents(
     numero_procedimiento: str = Form(None),
     nombre_documento: str = Form(None)
 ):
-    return handle_chat(question, numero_procedimiento, nombre_documento)
+        # Verificar en historial si existe pregunta similar
+    query = ChatHistory.select() \
+        .where(ChatHistory.numero_procedimiento == numero_procedimiento,
+               ChatHistory.nombre_documento == nombre_documento) \
+        .order_by(ChatHistory.timestamp.desc())
+    for chat in query:
+        if question.lower() in chat.pregunta.lower() or chat.pregunta.lower() in question.lower():
+            return {
+                "question": question,
+                "answer": chat.respuesta,
+                "references": ["respuesta del historial"]
+            }
+    # Si no hay historial, generar respuesta con Chroma
+    result = handle_chat(question, numero_procedimiento, nombre_documento)
+
+    # Guardar la nueva interacción en historial
+    ChatHistory.create(
+        numero_procedimiento=numero_procedimiento,
+        nombre_documento=nombre_documento,
+        pregunta=question,
+        respuesta=result["answer"]
+    )
+
+    return result
+
 
 @router.post("/extract_info/")
 async def extract_info(
@@ -43,11 +66,16 @@ def get_chat_history(
     numero_procedimiento: str = None,
     nombre_documento: str = None
 ):
+    print("Parámetros recibidos:", {"numero_procedimiento": numero_procedimiento, "nombre_documento": nombre_documento})
     query = ChatHistory.select()
     if numero_procedimiento:
         query = query.where(ChatHistory.numero_procedimiento == numero_procedimiento)
     if nombre_documento:
         query = query.where(ChatHistory.nombre_documento == nombre_documento)
+    
+    print("Query SQL:", query.sql())
+    results = list(query.order_by(ChatHistory.timestamp.desc()))
+    print("Número de resultados:", len(results))
     
     return [
         {
@@ -55,25 +83,6 @@ def get_chat_history(
             "respuesta": chat.respuesta,
             "fecha": chat.timestamp.isoformat()
         }
-        for chat in query.order_by(ChatHistory.timestamp.desc())
+        for chat in results
     ]
 
-class ChatTransferResponse(BaseModel):
-    pregunta: str
-    respuesta: str
-    numero_procedimiento: Optional[str] = None
-    nombre_documento: Optional[str] = None
-
-@router.post("/chat_export/", response_model=ChatTransferResponse)
-async def chat_export(
-    pregunta: str = Form(...),
-    respuesta: str = Form(...),
-    numero_procedimiento: Optional[str] = Form(None),
-    nombre_documento: Optional[str] = Form(None)
-):
-    return {
-        "pregunta": pregunta,
-        "respuesta": respuesta,
-        "numero_procedimiento": numero_procedimiento,
-        "nombre_documento": nombre_documento
-    }

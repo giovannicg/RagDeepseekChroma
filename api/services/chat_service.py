@@ -2,7 +2,7 @@ import traceback
 from langchain_ollama import OllamaLLM
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
-from models.chat_history import ChatHistory
+from api.models.chat_history import ChatHistory
 from api.constants import RESPOND_TO_MESSAGE_SYSTEM_PROMPT
 
 llm = OllamaLLM(
