@@ -4,6 +4,7 @@ from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from api.models.chat_history import ChatHistory
 from api.constants import RESPOND_TO_MESSAGE_SYSTEM_PROMPT
+from difflib import SequenceMatcher
 
 llm = OllamaLLM(
     model="llama3",
@@ -19,8 +20,29 @@ collection = Chroma(
     embedding_function=embedding_model
 )
 
-def handle_chat(question, numero_procedimiento=None, nombre_documento=None):
+def handle_chat(question, numero_procedimiento=None, nombre_documento=None, tipo_documento=None):
     try:
+        filtros = {}
+        if numero_procedimiento:
+            filtros["numero_procedimiento"] = numero_procedimiento
+        if nombre_documento:
+            filtros["nombre_documento"] = nombre_documento
+        historial = ChatHistory.select().where(*(getattr(ChatHistory, k) == v for k, v in filtros.items()))
+        for entrada in historial:
+            similitud = SequenceMatcher(None, entrada.pregunta.lower(), question.lower()).ratio()
+            if similitud >= 0.9:
+                return {
+                    "question": question,
+                    "answer": entrada.respuesta,
+                    "references": {
+                        "numero_procedimiento": entrada.numero_procedimiento,
+                        "nombre_documento": entrada.nombre_documento,
+                        "tipo_documento": entrada.tipo_documento,
+                        "pregunta": entrada.pregunta
+                    },
+                    "from_history": True
+                }
+
         filters = {}
         if numero_procedimiento:
             filters["numero_procedimiento"] = numero_procedimiento
@@ -66,6 +88,7 @@ def handle_chat(question, numero_procedimiento=None, nombre_documento=None):
             ChatHistory.create(
             numero_procedimiento=numero_procedimiento,
             nombre_documento=nombre_documento,
+            tipo_documento=tipo_documento,
             pregunta=question,
             respuesta=response
         )
@@ -73,10 +96,26 @@ def handle_chat(question, numero_procedimiento=None, nombre_documento=None):
         return {
             "question": question,
             "answer": response,
-            "references": [doc.metadata for doc in results]
+            "references": [doc.metadata for doc in results],
+            "from_history": False
         }
     except Exception as e:
         return {
             "error": str(e),
             "trace": traceback.format_exc()
         }
+
+def buscar_pregunta_similar(pregunta, numero_procedimiento=None, nombre_documento=None, umbral_similitud=0.9):
+    filtros = {}
+    if numero_procedimiento:
+        filtros["numero_procedimiento"] = numero_procedimiento
+    if nombre_documento:
+        filtros["nombre_documento"] = nombre_documento
+
+    historial = ChatHistory.select().where(*(getattr(ChatHistory, k) == v for k, v in filtros.items()))
+
+    for entrada in historial:
+        similitud = SequenceMatcher(None, entrada.pregunta.lower(), pregunta.lower()).ratio()
+        if similitud >= umbral_similitud:
+            return entrada.respuesta
+    return None

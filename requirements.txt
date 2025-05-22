@@ -11,3 +11,4 @@ fastapi
 uvicorn
 peewee
 sentence-transformers
+langchain_chroma
