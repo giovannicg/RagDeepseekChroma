@@ -84,15 +84,19 @@ def handle_chat(question, numero_procedimiento=None, nombre_documento=None, tipo
         prompt = RESPOND_TO_MESSAGE_SYSTEM_PROMPT.replace("{{knowledge}}", context)
         full_prompt = f"{prompt}\n\nPregunta: {question}\nAsistente:"
         response = llm.invoke(full_prompt)
-        if response:
+        if response and results:
+            metadata = results[0].metadata or {}
             ChatHistory.create(
-            numero_procedimiento=numero_procedimiento,
-            nombre_documento=nombre_documento,
-            tipo_documento=tipo_documento,
-            pregunta=question,
-            respuesta=response
-        )
-
+                numero_procedimiento=metadata.get("numero_procedimiento"),
+                nombre_documento=metadata.get("nombre_documento"),
+                tipo_documento=metadata.get("tipo_documento"),
+                pregunta=question,
+                respuesta=response
+            )
+        else:
+            print("❌ No se guardó en historial: respuesta sin contexto relevante.")
+        for h in ChatHistory.select().order_by(ChatHistory.id.desc()).limit(5):
+            print(h.numero_procedimiento, h.nombre_documento, h.tipo_documento, h.pregunta, h.respuesta)
         return {
             "question": question,
             "answer": response,
