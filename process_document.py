@@ -15,7 +15,7 @@ embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/paraph
 vectordb = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_model)
 llm = OllamaLLM(
     model="llama3",
-    base_url="http://100.64.189.85:11434"
+    base_url="http://localhost:11434/"
 )  # Puedes cambiar a "mistral", "gemma", etc.
 
 def split_text(text: str, size: int) -> List[str]:

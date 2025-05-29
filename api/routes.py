@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form
 from api.services.upload_service import handle_pdf_upload
 from api.services.chat_service import handle_chat
 from api.services.extract_service import preguntar_campo
-from api.services.chat_service import vectordb, llm
+from api.services.chat_service import collection, llm
 from api.models.chat_history import ChatHistory
 
 
@@ -32,7 +32,7 @@ async def upload_pdf(
         "cuantia": "cuantía",
         "numero_juzgado": "número juzgado"
     }
-    campos_extraidos = {clave: preguntar_campo(valor, vectordb, llm) for clave, valor in campos.items()}
+    campos_extraidos = {clave: preguntar_campo(valor, collection, llm) for clave, valor in campos.items()}
     return {
     "message": f"{file.filename} procesado exitosamente.",
     "campos_extraidos": campos_extraidos

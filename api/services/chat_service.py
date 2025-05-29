@@ -7,8 +7,7 @@ from api.constants import RESPOND_TO_MESSAGE_SYSTEM_PROMPT
 from difflib import SequenceMatcher
 
 llm = OllamaLLM(
-    model="llama3",
-    base_url="http://100.64.189.85:11434"
+    model="llama3"
 )
 
 embedding_model = HuggingFaceEmbeddings(
