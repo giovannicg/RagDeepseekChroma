@@ -1,5 +1,5 @@
 import streamlit as st
-from process_document import process_pdf_and_add_to_chroma
+from api.services.process_document import process_pdf_and_add_to_chroma
 import os
 
 st.set_page_config(page_title="📄 Subir Documentos")

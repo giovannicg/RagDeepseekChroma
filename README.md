@@ -64,19 +64,31 @@ Permite hacer preguntas libres sobre el contenido de los documentos subidos, usa
 ### `GET /chat_history/`
 Devuelve el historial de preguntas y respuestas realizadas por el usuario.
 
-## Arquitectura
-FastAPI ──► Extrae texto y genera chunks
-         │
-         └─► Guarda embeddings en ChromaDB
-         │
-         └─► Llama a Ollama (LLM local) para responder preguntas
+## 🏗️ Arquitectura
 
-## Estructura del Proyecto
+```
+[PDF Upload] ──▶ [Texto + Chunks]
+                    │
+                    ▼
+            [ChromaDB (Embeddings)]
+                    │
+                    ▼
+         [Modelo LLM vía Ollama (llama3)]
+                    │
+                    ▼
+     [Extracción de campos + Respuestas]
+```
+
+## 🗂️ Estructura del Proyecto
+
+```
 api/
-├── routes.py              # Endpoints principales
+├── main.py              # Punto de entrada de la app FastAPI
+├── routes.py            # Define todos los endpoints (upload, chat, extract, etc.)
 ├── services/
-│   ├── upload_service.py  # Procesamiento de PDFs
-│   ├── chat_service.py    # Búsqueda + llamadas a LLM
-│   └── extract_service.py # Extracción semántica
-├── models/
-│   └── chat_history.py    # Modelo de historial de preguntas
+│   ├── upload_service.py  # Lógica para leer PDFs y generar chunks
+│   ├── chat_service.py    # Interacción con ChromaDB y el LLM
+│   └── extract_service.py # Extracción semántica de campos legales
+└── models/
+    └── chat_history.py    # Modelo para guardar historial de preguntas y respuestas
+```
